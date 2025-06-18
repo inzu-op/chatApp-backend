@@ -1,20 +1,17 @@
-import { NextResponse } from 'next/server';
-import connectDB from '@/lib/mongodb';
-import User from '@/models/User';
+import express from 'express';
 import mongoose from 'mongoose';
+import User from '../../../models/User';
 
-export async function POST(request: Request) {
+const router = express.Router();
+
+// POST /api/users/add-chat - Add user to chat list
+router.post('/', async (req, res) => {
   try {
-    const { userId, targetUserId } = await request.json();
+    const { userId, targetUserId } = req.body;
 
     if (!userId || !targetUserId) {
-      return NextResponse.json(
-        { error: 'Both userId and targetUserId are required' },
-        { status: 400 }
-      );
+      return res.status(400).json({ error: 'Both userId and targetUserId are required' });
     }
-
-    await connectDB();
 
     // Validate both users exist
     const [currentUser, targetUser] = await Promise.all([
@@ -23,18 +20,12 @@ export async function POST(request: Request) {
     ]);
 
     if (!currentUser || !targetUser) {
-      return NextResponse.json(
-        { error: 'One or both users not found' },
-        { status: 404 }
-      );
+      return res.status(404).json({ error: 'One or both users not found' });
     }
 
     // Check if user is trying to add themselves
     if (userId === targetUserId) {
-      return NextResponse.json(
-        { error: 'Cannot add yourself to chat' },
-        { status: 400 }
-      );
+      return res.status(400).json({ error: 'Cannot add yourself to chat' });
     }
 
     // Check if user is already in chat list
@@ -43,10 +34,7 @@ export async function POST(request: Request) {
     );
 
     if (isAlreadyAdded) {
-      return NextResponse.json(
-        { error: 'User is already in your chat list' },
-        { status: 400 }
-      );
+      return res.status(400).json({ error: 'User is already in your chat list' });
     }
 
     // Add target user to current user's chat list
@@ -64,10 +52,7 @@ export async function POST(request: Request) {
     ).populate('chatUsers.userId', 'name email');
 
     if (!updatedUser) {
-      return NextResponse.json(
-        { error: 'Failed to update user' },
-        { status: 500 }
-      );
+      return res.status(500).json({ error: 'Failed to update user' });
     }
 
     // Transform the data to match the expected format
@@ -78,18 +63,14 @@ export async function POST(request: Request) {
       addedAt: chatUser.addedAt
     }));
 
-    return NextResponse.json(chatUsers);
+    res.json(chatUsers);
   } catch (error) {
     console.error('Error adding chat user:', error);
     if (error instanceof mongoose.Error.CastError) {
-      return NextResponse.json(
-        { error: 'Invalid user ID format' },
-        { status: 400 }
-      );
+      return res.status(400).json({ error: 'Invalid user ID format' });
     }
-    return NextResponse.json(
-      { error: 'Failed to add chat user' },
-      { status: 500 }
-    );
+    res.status(500).json({ error: 'Failed to add chat user' });
   }
-} 
+});
+
+export default router; 

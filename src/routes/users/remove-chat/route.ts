@@ -1,31 +1,23 @@
-export const runtime = "nodejs";
-
-import { NextResponse } from 'next/server';
-import connectDB from '@/lib/mongodb';
-import User from '@/models/User';
+import express from 'express';
 import mongoose from 'mongoose';
+import User from '../../../models/User';
 
-export async function POST(req: Request) {
+const router = express.Router();
+
+// POST /api/users/remove-chat - Remove user from chat list
+router.post('/', async (req, res) => {
   try {
-    await connectDB();
-
-    const { userId, targetUserId } = await req.json();
+    const { userId, targetUserId } = req.body;
     console.log('Removing chat user:', { userId, targetUserId });
 
     if (!userId || !targetUserId) {
       console.log('Missing required fields:', { userId, targetUserId });
-      return NextResponse.json(
-        { error: "Both user IDs are required" },
-        { status: 400 }
-      );
+      return res.status(400).json({ error: "Both user IDs are required" });
     }
 
     if (!mongoose.Types.ObjectId.isValid(userId) || !mongoose.Types.ObjectId.isValid(targetUserId)) {
       console.log('Invalid ObjectId format:', { userId, targetUserId });
-      return NextResponse.json(
-        { error: "Invalid user ID format" },
-        { status: 400 }
-      );
+      return res.status(400).json({ error: "Invalid user ID format" });
     }
 
     // Convert string IDs to ObjectIds
@@ -41,10 +33,7 @@ export async function POST(req: Request) {
 
     if (!currentUser) {
       console.log('Current user not found:', userId);
-      return NextResponse.json(
-        { error: "Current user not found" },
-        { status: 404 }
-      );
+      return res.status(404).json({ error: "Current user not found" });
     }
 
     // Remove current user from target user's chatUsers (reciprocal removal)
@@ -71,21 +60,17 @@ export async function POST(req: Request) {
       pinned: chatUser.pinned || false
     }));
 
-    return NextResponse.json({
+    res.json({
       success: true,
       chatUsers
     });
   } catch (error) {
     console.error('Error in remove-chat API:', error);
     if (error instanceof mongoose.Error.CastError) {
-      return NextResponse.json(
-        { error: "Invalid user ID format" },
-        { status: 400 }
-      );
+      return res.status(400).json({ error: "Invalid user ID format" });
     }
-    return NextResponse.json(
-      { error: "Failed to remove user from chat" },
-      { status: 500 }
-    );
+    res.status(500).json({ error: "Failed to remove user from chat" });
   }
-}
+});
+
+export default router;

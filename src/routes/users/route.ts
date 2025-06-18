@@ -1,29 +1,31 @@
-export const runtime = "nodejs"; 
-
-import { NextResponse } from 'next/server';
-import connectDB from '@/lib/mongodb';
-import User from '@/models/User';
+import express from 'express';
+import mongoose from 'mongoose';
 import bcrypt from 'bcryptjs';
-import { getSession } from "@/lib/auth";
 
-export async function GET() {
+const router = express.Router();
+
+// Import User model (we'll create this)
+import User from '../../models/User';
+
+// GET /api/users - Get current user's chat users
+router.get('/', async (req, res) => {
   try {
-    const session = await getSession();
-    if (!session) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    // TODO: Add authentication middleware
+    const userId = req.user?.id; // This will come from auth middleware
+    
+    if (!userId) {
+      return res.status(401).json({ error: "Unauthorized" });
     }
 
-    await connectDB();
-
     // Get the current user with populated chatUsers
-    const currentUser = await User.findById(session.userId)
+    const currentUser = await User.findById(userId)
       .populate({
         path: 'chatUsers.userId',
         select: 'name email'
       });
 
     if (!currentUser) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
+      return res.status(404).json({ error: "User not found" });
     }
 
     // Transform the chatUsers array to include pinned status
@@ -42,36 +44,26 @@ export async function GET() {
       return new Date(b.addedAt).getTime() - new Date(a.addedAt).getTime();
     });
 
-    return NextResponse.json(sortedUsers);
+    res.json(sortedUsers);
   } catch (error) {
     console.error("Error fetching users:", error);
-    return NextResponse.json(
-      { error: "Failed to fetch users" },
-      { status: 500 }
-    );
+    res.status(500).json({ error: "Failed to fetch users" });
   }
-}
+});
 
-export async function POST(request: Request) {
+// POST /api/users - Create new user (signup)
+router.post('/', async (req, res) => {
   try {
-    const { name, email, password } = await request.json();
+    const { name, email, password } = req.body;
 
     if (!name || !email || !password) {
-      return NextResponse.json(
-        { error: 'Missing required fields' },
-        { status: 400 }
-      );
+      return res.status(400).json({ error: 'Missing required fields' });
     }
-
-    await connectDB();    
 
     // Check if user already exists
     const existingUser = await User.findOne({ email });
     if (existingUser) {
-      return NextResponse.json(
-        { error: 'User with this email already exists' },
-        { status: 400 }
-      );
+      return res.status(400).json({ error: 'User with this email already exists' });
     }
 
     // Hash password
@@ -91,26 +83,22 @@ export async function POST(request: Request) {
       email: user.email
     };
     
-    return NextResponse.json(transformedUser, { status: 201 });
+    res.status(201).json(transformedUser);
   } catch (error) {
     console.error('Error creating user:', error);
-    return NextResponse.json(
-      { error: 'Failed to create user' },
-      { status: 500 }
-    );
+    res.status(500).json({ error: 'Failed to create user' });
   }
-}
+});
 
-export async function getAllUsers() {
+// GET /api/users/all - Get all users (for search)
+router.get('/all', async (req, res) => {
   try {
-    await connectDB();
     const users = await User.find({}).select("-password");
-    return NextResponse.json(users);
+    res.json(users);
   } catch (error) {
     console.error("Error fetching users:", error);
-    return NextResponse.json(
-      { error: "Failed to fetch users" },
-      { status: 500 }
-    );
+    res.status(500).json({ error: "Failed to fetch users" });
   }
-} 
+});
+
+export default router; 

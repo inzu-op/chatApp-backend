@@ -1,53 +1,73 @@
-import { type NextRequest, NextResponse } from "next/server"
-import { verifyToken } from "@/lib/auth"
+import { Request, Response, NextFunction } from 'express';
+import jwt from 'jsonwebtoken';
 
-const protectedRoutes = ["/dashboard", "/profile"]
-const authRoutes = ["/login", "/signup"]
-
-export default async function middleware(req: NextRequest) {
-  const path = req.nextUrl.pathname
-  const isProtectedRoute = protectedRoutes.some((route) => path.startsWith(route))
-  const isAuthRoute = authRoutes.includes(path)
-
-  const token = req.cookies.get("auth-token")?.value
- 
-  // If no token is present and trying to access protected route, redirect to login
-  if (isProtectedRoute && !token) {
-    return NextResponse.redirect(new URL("/login", req.nextUrl))
-  }
-
-  // If token exists, verify it
-  let session = null
-  if (token) {
-    try {
-      session = verifyToken(token)
-    } catch (error) {
-      console.error("Token verification error:", error)
-      // If token is invalid and trying to access protected route, redirect to login
-      if (isProtectedRoute) {
-    return NextResponse.redirect(new URL("/login", req.nextUrl))
-  }
+// Extend Request interface to include user
+declare global {
+  namespace Express {
+    interface Request {
+      user?: {
+        id: string;
+        email: string;
+        name: string;
+      };
     }
   }
-
-  // If authenticated and trying to access auth routes, redirect to dashboard
-  if (isAuthRoute && session) {
-    return NextResponse.redirect(new URL(`/${session.userId}/dashboard`, req.nextUrl))
-  }
-
-  // If trying to access protected route without valid session, redirect to login
-  if (isProtectedRoute && !session) {
-    return NextResponse.redirect(new URL("/login", req.nextUrl))
-  }
-
-  // Allow Socket.IO connections
-  if (path.startsWith('/api/socket')) {
-    return NextResponse.next()
-  }
-
-  return NextResponse.next()
 }
 
-export const config = {
-  matcher: ["/((?!api|_next/static|_next/image|.*\\.png$).*)"],
-}
+// JWT Secret - should come from environment variables
+const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
+
+// Verify JWT token
+export const verifyToken = (token: string) => {
+  try {
+    return jwt.verify(token, JWT_SECRET) as any;
+  } catch (error) {
+    throw new Error('Invalid token');
+  }
+};
+
+// Authentication middleware
+export const authMiddleware = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const token = req.headers.authorization?.replace('Bearer ', '') || 
+                  req.cookies?.['auth-token'];
+
+    if (!token) {
+      return res.status(401).json({ error: 'No token provided' });
+    }
+
+    const decoded = verifyToken(token);
+    req.user = {
+      id: decoded.id,
+      email: decoded.email,
+      name: decoded.name
+    };
+
+    next();
+  } catch (error) {
+    console.error('Token verification error:', error);
+    return res.status(401).json({ error: 'Invalid token' });
+  }
+};
+
+// Optional authentication middleware (doesn't fail if no token)
+export const optionalAuthMiddleware = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const token = req.headers.authorization?.replace('Bearer ', '') || 
+                  req.cookies?.['auth-token'];
+
+    if (token) {
+      const decoded = verifyToken(token);
+      req.user = {
+        id: decoded.id,
+        email: decoded.email,
+        name: decoded.name
+      };
+    }
+
+    next();
+  } catch (error) {
+    // Don't fail, just continue without user
+    next();
+  }
+};

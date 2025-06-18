@@ -1,22 +1,20 @@
-export const runtime = "nodejs"; 
+import express from "express";
+import { Request, Response } from "express";
+import Message from "../../../models/message";
 
-import { NextResponse } from "next/server";
-import connectDB from "@/lib/mongodb";
-import Message from "@/app/models/Message";
+const router = express.Router();
 
-export async function POST(req: Request) {
+// POST /api/messages/clear - Clear messages between two users
+router.post('/', async (req: Request, res: Response) => {
   try {
-    await connectDB();
-    const { userId, targetUserId } = await req.json();
+    // await connectDB();
+
+    const { userId, targetUserId } = req.body;
 
     if (!userId || !targetUserId) {
-      return NextResponse.json(
-        { error: "Both userId and targetUserId are required" },
-        { status: 400 }
-      );
+      return res.status(400).json({ error: "Both userId and targetUserId are required" });
     }
 
-    // Delete all messages between the two users
     await Message.deleteMany({
       $or: [
         { sender: userId, receiver: targetUserId },
@@ -24,12 +22,11 @@ export async function POST(req: Request) {
       ]
     });
 
-    return NextResponse.json({ success: true });
+    return res.status(200).json({ success: true });
   } catch (error) {
     console.error("Error clearing messages:", error);
-    return NextResponse.json(
-      { error: "Failed to clear messages" },
-      { status: 500 }
-    );
+    return res.status(500).json({ error: "Failed to clear messages" });
   }
-} 
+});
+
+export default router;

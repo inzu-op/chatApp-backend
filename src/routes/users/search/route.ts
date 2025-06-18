@@ -1,20 +1,16 @@
-import { NextResponse } from 'next/server';
-import connectDB from '@/lib/mongodb';
-import User from '@/models/User';
+import express from 'express';
+import User from '../../../models/User';
 
-export async function GET(request: Request) {
+const router = express.Router();
+
+// GET /api/users/search - Search users by name
+router.get('/', async (req, res) => {
   try {
-    const { searchParams } = new URL(request.url);
-    const query = searchParams.get('query');
+    const { query } = req.query;
 
     if (!query) {
-      return NextResponse.json(
-        { error: 'Search query is required' },
-        { status: 400 }
-      );
+      return res.status(400).json({ error: 'Search query is required' });
     }
-
-    await connectDB();
 
     // Search users by exact name match
     const users = await User.find({
@@ -22,18 +18,17 @@ export async function GET(request: Request) {
     }).select('-password');
 
     // Transform the data to match the expected format
-    const transformedUsers = users.map(user => ({
+    const transformedUsers = users.map((user: any) => ({
       id: user._id.toString(),
       name: user.name,
       email: user.email
     }));
 
-    return NextResponse.json(transformedUsers);
+    res.json(transformedUsers);
   } catch (error) {
     console.error('Error searching users:', error);
-    return NextResponse.json(
-      { error: 'Failed to search users' },
-      { status: 500 }
-    );
+    res.status(500).json({ error: 'Failed to search users' });
   }
-} 
+});
+
+export default router; 

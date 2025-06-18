@@ -1,29 +1,28 @@
-export const runtime = "nodejs"; 
+import express from 'express';
+import mongoose from 'mongoose';
 
-import { NextResponse } from 'next/server';
-import connectDB from '@/lib/mongodb';
-import Message from '@/app/models/Message';
+const router = express.Router();
 
-// Send a new message
-export async function POST(req: Request) {
+// Import Message model
+import Message from '../../models/message';
+
+// POST /api/messages - Send a new message
+router.post('/', async (req, res) => {
   try {
-    await connectDB();
-    const { text, receiverId, senderId } = await req.json();
+    const { text, receiverId, senderId } = req.body;
 
     // Validate required fields
     if (!text || !receiverId || !senderId) {
-      return NextResponse.json(
-        { error: 'Missing required fields: text, receiverId, or senderId' },
-        { status: 400 }
-      );
+      return res.status(400).json({
+        error: 'Missing required fields: text, receiverId, or senderId'
+      });
     }
 
     // Validate text length
     if (text.trim().length === 0) {
-      return NextResponse.json(
-        { error: 'Message text cannot be empty' },
-        { status: 400 }
-      );
+      return res.status(400).json({
+        error: 'Message text cannot be empty'
+      });
     }
 
     // Create new message
@@ -35,32 +34,24 @@ export async function POST(req: Request) {
       read: false
     });
 
-    return NextResponse.json(message, { status: 201 });
+    res.status(201).json(message);
   } catch (error) {
     console.error('Error creating message:', error);
-    return NextResponse.json(
-      { error: 'Failed to create message' },
-      { status: 500 }
-    );
+    res.status(500).json({ error: 'Failed to create message' });
   }
-}
+});
 
-// Get messages between two users
-export async function GET(req: Request) {
+// GET /api/messages - Get messages between two users
+router.get('/', async (req, res) => {
   try {
-    const { searchParams } = new URL(req.url);
-    const userId = searchParams.get('userId');
-    const currentUserId = searchParams.get('currentUserId');
+    const { userId, currentUserId } = req.query;
 
     // Validate required parameters
     if (!userId || !currentUserId) {
-      return NextResponse.json(
-        { error: 'Missing required parameters: userId or currentUserId' },
-        { status: 400 }
-      );
+      return res.status(400).json({
+        error: 'Missing required parameters: userId or currentUserId'
+      });
     }
-
-    await connectDB();
 
     // Find messages where either user is sender or receiver
     const messages = await Message.find({
@@ -83,12 +74,11 @@ export async function GET(req: Request) {
       { read: true }
     );
 
-    return NextResponse.json(messages);
+    res.json(messages);
   } catch (error) {
     console.error('Error fetching messages:', error);
-    return NextResponse.json(
-      { error: 'Failed to fetch messages' },
-      { status: 500 }
-    );
+    res.status(500).json({ error: 'Failed to fetch messages' });
   }
-} 
+});
+
+export default router; 
