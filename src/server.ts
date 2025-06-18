@@ -10,24 +10,30 @@ dotenv.config();
 
 const app = express();
 const server = createServer(app);
+
+const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:3000';
+
+// Set up Socket.io with CORS
 const io = new Server(server, {
   cors: {
-    origin: "https://chatapp-front-jet.vercel.app", 
+    origin: FRONTEND_URL,
     methods: ["GET", "POST", "PUT", "DELETE"],
-    credentials: true
-  }
+    credentials: true,
+  },
 });
 
-// Make io available globally for routes
+// Make io available globally
 declare global {
+  // eslint-disable-next-line no-var
   var io: Server;
 }
 global.io = io;
 
+// Middleware
 app.use(cors({
-  origin: "https://chatapp-front-jet.vercel.app", // allow frontend
-  credentials: true, // if you're using cookies or sessions
-}))
+  origin: FRONTEND_URL,
+  credentials: true,
+}));
 app.use(express.json());
 
 // Basic route
@@ -61,48 +67,47 @@ app.use('/api/users/all', allUsersRoute);
 app.use('/api/users/chat-users', chatUsersRoute);
 app.use('/api/users/remove-chat', removeChatRoute);
 app.use('/api/users/search', searchUsersRoute);
-app.use('/api/users', userByIdRoute); // This should be last since it's a dynamic route
+app.use('/api/users', userByIdRoute); // Dynamic route last
 
 // Socket.io connection
 io.on('connection', (socket) => {
   console.log('A user connected:', socket.id);
-  
+
   const userId = socket.handshake.query.userId as string;
-  
+
   if (userId) {
-    // Join user's personal room
     socket.join(userId);
     console.log(`User ${userId} joined their room`);
-    
+
     // Broadcast user online status
     socket.broadcast.emit('user-status-change', {
       userId: userId,
-      isOnline: true
+      isOnline: true,
     });
   }
 
   socket.on('disconnect', () => {
     console.log('User disconnected:', socket.id);
-    
+
     if (userId) {
       // Broadcast user offline status
       socket.broadcast.emit('user-status-change', {
         userId: userId,
-        isOnline: false
+        isOnline: false,
       });
     }
   });
 
-  // Handle typing indicators
+  // Typing indicators
   socket.on('typing', (data) => {
     console.log('Typing indicator:', data);
     socket.to(data.receiverId).emit('typing', {
       userId: data.userId,
-      receiverId: data.receiverId
+      receiverId: data.receiverId,
     });
   });
 
-  // Handle join/leave chat rooms
+  // Join/leave chat rooms
   socket.on('join-chat', (userId) => {
     socket.join(userId);
     console.log(`User ${userId} joined chat room`);
@@ -113,30 +118,36 @@ io.on('connection', (socket) => {
     console.log(`User ${userId} left chat room`);
   });
 
-  // Handle chat user updates (when users are added/removed)
+  // Chat user updates
   socket.on('chat-users-updated', (data) => {
     console.log('Chat users updated for user:', data.userId);
     socket.to(data.userId).emit('chat-users-updated', data);
   });
 
-  // Handle user status updates
+  // User status updates
   socket.on('user-status-change', (data) => {
     console.log('User status change:', data);
     socket.broadcast.emit('user-status-change', data);
   });
 });
 
-// MongoDB connection
-mongoose.connect(process.env.MONGO_URI || 'mongodb://localhost:27017/chatapp')
+// MongoDB connection and server start
+const PORT = process.env.PORT || 5000;
+const MONGO_URI = process.env.MONGO_URI || '';
+
+if (!MONGO_URI) {
+  console.error('MONGO_URI is not defined in environment variables.');
+  process.exit(1);
+}
+
+mongoose.connect(MONGO_URI)
   .then(() => {
     console.log('MongoDB connected!');
+    server.listen(PORT, () => {
+      console.log(`Server is running on port ${PORT}`);
+    });
   })
   .catch((err) => {
     console.error('MongoDB connection error:', err);
+    process.exit(1);
   });
-
-const PORT = process.env.PORT || 5000;
-
-server.listen(PORT, () => {
-  console.log(`Server is running on port ${PORT}`);
-}); 
