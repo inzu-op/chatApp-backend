@@ -25,7 +25,7 @@ declare global {
 global.io = io;
 
 app.use(cors({
-  origin: "https://chatapp-front-jet.vercel.app/l", // allow frontend
+  origin: "https://chatapp-front-jet.vercel.app/", // allow frontend
   credentials: true, // if you're using cookies or sessions
 }))
 app.use(express.json());
