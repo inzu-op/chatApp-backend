@@ -57,11 +57,17 @@ router.post('/', async (req, res) => {
 
     // Transform the data to match the expected format
     const chatUsers = updatedUser.chatUsers.map((chatUser: any) => ({
-      id: chatUser.userId._id.toString(),
+      _id: chatUser.userId._id.toString(),
       name: chatUser.userId.name,
       email: chatUser.userId.email,
       addedAt: chatUser.addedAt
     }));
+
+    // Emit socket event to notify both users about the chat list update
+    if (global.io) {
+      global.io.to(userId).emit('chat-users-updated', { userId });
+      global.io.to(targetUserId).emit('chat-users-updated', { userId: targetUserId });
+    }
 
     res.json(chatUsers);
   } catch (error) {

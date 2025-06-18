@@ -27,7 +27,7 @@ router.get('/', async (req, res) => {
     // Transform the data to match the expected format
     const chatUsers = user.chatUsers.map((chatUser: any) => {
       const userData = {
-        id: chatUser.userId._id.toString(),
+        _id: chatUser.userId._id.toString(),
         name: chatUser.userId.name,
         email: chatUser.userId.email,
         addedAt: chatUser.addedAt

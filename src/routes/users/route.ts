@@ -78,7 +78,7 @@ router.post('/', async (req, res) => {
 
     // Transform and return user without password
     const transformedUser = {
-      id: user._id.toString(),
+      _id: user._id.toString(),
       name: user.name,
       email: user.email
     };

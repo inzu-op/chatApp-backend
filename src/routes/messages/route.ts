@@ -34,6 +34,21 @@ router.post('/', async (req, res) => {
       read: false
     });
 
+    // Emit socket event for real-time message delivery
+    if (global.io) {
+      const messageData = {
+        _id: message._id,
+        text: message.text,
+        senderId: message.sender,
+        receiverId: message.receiver,
+        timestamp: message.timestamp,
+        read: message.read
+      };
+      
+      global.io.to(senderId).emit('new-message', messageData);
+      global.io.to(receiverId).emit('new-message', messageData);
+    }
+
     res.status(201).json(message);
   } catch (error) {
     console.error('Error creating message:', error);

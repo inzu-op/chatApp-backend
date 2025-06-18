@@ -24,7 +24,7 @@ router.get('/:id', async (req, res) => {
 
     // Transform the data to match the expected format
     const userData = {
-      id: user._id.toString(),
+      _id: user._id.toString(),
       name: user.name,
       email: user.email
     };

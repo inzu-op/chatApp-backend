@@ -19,7 +19,7 @@ router.get('/', async (req, res) => {
 
     // Transform the data to match the expected format
     const transformedUsers = users.map((user: any) => ({
-      id: user._id.toString(),
+      _id: user._id.toString(),
       name: user.name,
       email: user.email
     }));
