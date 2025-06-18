@@ -8,9 +8,8 @@
     "dev": "ts-node-dev --respawn --transpile-only src/server.ts",
     "build": "tsc",
     "watch": "tsc --watch",
-    "test-socket": "node socket-test.js",
-    "render-build": "npm install && npm run build"
-  }
+    "test-socket": "node socket-test.js"
+  },
   "dependencies": {
     "bcryptjs": "^2.4.3",
     "cors": "^2.8.5",
