@@ -2,9 +2,9 @@
   "name": "chatapp-backend",
   "version": "1.0.0",
   "description": "Backend API server for ChatApp",
-  "main": "dist/server.js",
+  "main": "dist/server.ts",
   "scripts": {
-    "start": "node dist/server.js",
+    "start": "node dist/server.ts",
     "dev": "ts-node-dev --respawn --transpile-only src/server.ts",
     "build": "tsc",
     "watch": "tsc --watch",
