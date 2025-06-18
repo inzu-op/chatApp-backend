@@ -12,7 +12,7 @@ const app = express();
 const server = createServer(app);
 const io = new Server(server, {
   cors: {
-    origin: "https://chatapp-front-jet.vercel.app/", 
+    origin: "https://chatapp-front-jet.vercel.app", 
     methods: ["GET", "POST", "PUT", "DELETE"],
     credentials: true
   }
@@ -25,7 +25,7 @@ declare global {
 global.io = io;
 
 app.use(cors({
-  origin: "https://chatapp-front-jet.vercel.app/", // allow frontend
+  origin: "https://chatapp-front-jet.vercel.app", // allow frontend
   credentials: true, // if you're using cookies or sessions
 }))
 app.use(express.json());
